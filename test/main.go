@@ -1,15 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-)
 
-// type obj struct {
-// 	bv string
-// 	we int
-// 	ol string
-// }
+	"golang.org/x/crypto/bcrypt"
+)
 
 type User struct {
 	Username string
@@ -19,21 +14,23 @@ type User struct {
 
 type Users []User
 
+var pwd string = "$2a$05$xy4PBOiqqMx3CxiwqO2YcOC6GbRxJE/lvWjgZtj3.6TIDgrjnqN.2"
+
 func main() {
-	var arr Users
-	a := Users{
-		User{
-			Username: "test",
-			Password: "qwe",
-			Email:    "asd",
-		},
-		User{
-			Username: "test2",
-			Password: "qwe2",
-			Email:    "asd2",
-		},
-	}
-	arr = a
-	b, _ := json.Marshal(arr)
-	fmt.Println(string(b))
+
+	p := "passwor"
+	// s := 5
+
+	// hashed, err := bcrypt.GenerateFromPassword([]byte(p), s)
+
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+
+	// fmt.Println(string(hashed))
+
+	err := bcrypt.CompareHashAndPassword([]byte(pwd), []byte(p))
+
+	fmt.Println(err)
 }

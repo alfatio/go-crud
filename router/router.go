@@ -14,12 +14,6 @@ type User struct {
 func MainRouter() *gin.Engine {
 	r := gin.Default()
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-
 	r.GET("/users", func(c *gin.Context) {
 
 		users := model.GetAllUsers()
@@ -43,9 +37,7 @@ func MainRouter() *gin.Engine {
 
 		if r {
 			c.JSON(200, gin.H{
-				"1": body.Username,
-				"2": body.Password,
-				"3": body.Email,
+				"message": "ok",
 			})
 		} else {
 			c.JSON(400, gin.H{

@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/alfatio/login/config"
+	"github.com/alfatio/login/helper"
 )
 
 type User struct {
@@ -13,8 +14,9 @@ type User struct {
 	Email    string `json:"email"`
 }
 
+var db = config.DB()
+
 func GetAllUsers() []User {
-	db := config.DB()
 	query := "SELECT * FROM users"
 	var output []User
 
@@ -41,7 +43,7 @@ func GetAllUsers() []User {
 }
 
 func GetUserByUsername(u string) User {
-	db := config.DB()
+	// db := config.DB()
 	var output User
 
 	query := `
@@ -71,12 +73,19 @@ func GetUserByUsername(u string) User {
 }
 
 func InsertUser(p User) bool {
-	db := config.DB()
+	h, err := helper.HashPW(p.Password)
+
+	if err != nil {
+		return false
+	}
+
+	p.Password = h
+
 	query := `
 	INSERT INTO users (username, password, email)
 		VALUES ($1, $2, $3)
 	`
-	_, err := db.Query(query, p.Username, p.Password, p.Email)
+	_, err = db.Query(query, p.Username, p.Password, p.Email)
 
 	log.Println(err)
 
