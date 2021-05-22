@@ -1,6 +1,8 @@
 package router
 
 import (
+	"strconv"
+
 	"github.com/alfatio/login/model"
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +27,7 @@ func MainRouter() *gin.Engine {
 		username := c.Param("username")
 
 		user := model.GetUserByUsername(username)
-
+		// TODO error response handling user not found
 		c.JSON(200, user)
 	})
 
@@ -40,10 +42,26 @@ func MainRouter() *gin.Engine {
 				"message": "ok",
 			})
 		} else {
+			// TODO error response handling constraint
 			c.JSON(400, gin.H{
 				"message": "error insert",
 			})
 		}
+	})
+
+	r.PUT("/users/:id", func(c *gin.Context) {
+		var body model.User
+		c.BindJSON(&body)
+		body.Id, _ = strconv.Atoi(c.Param("id"))
+
+		user, err := model.EditUser(body)
+		if err != nil {
+			panic(err)
+		}
+
+		// TODO error response handling constraint
+
+		c.JSON(200, user)
 	})
 
 	return r

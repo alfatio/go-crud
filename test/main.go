@@ -2,35 +2,32 @@ package main
 
 import (
 	"fmt"
-
-	"golang.org/x/crypto/bcrypt"
+	"reflect"
 )
 
 type User struct {
 	Username string
 	Password string
 	Email    string
+	Age      int
 }
 
 type Users []User
 
-var pwd string = "$2a$05$xy4PBOiqqMx3CxiwqO2YcOC6GbRxJE/lvWjgZtj3.6TIDgrjnqN.2"
-
 func main() {
+	u := User{}
+	f := reflect.ValueOf(&u).Elem()
+	n := f.NumField()
 
-	p := "passwor"
-	// s := 5
+	c := make([]interface{}, n)
 
-	// hashed, err := bcrypt.GenerateFromPassword([]byte(p), s)
+	c[0] = &u.Username
+	c[1] = &u.Password
+	c[2] = &u.Email
+	c[3] = &u.Age
 
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
+	fmt.Printf("%#v \n", u)
 
-	// fmt.Println(string(hashed))
+	fmt.Printf("%#v \n", c)
 
-	err := bcrypt.CompareHashAndPassword([]byte(pwd), []byte(p))
-
-	fmt.Println(err)
 }
