@@ -18,34 +18,46 @@ func MainRouter() *gin.Engine {
 
 	r.GET("/users", func(c *gin.Context) {
 
-		users := model.GetAllUsers()
+		users, err := model.GetAllUsers()
 
-		c.JSON(200, users)
+		if err != nil {
+			c.JSON(400, gin.H{
+				"message": err.Error(),
+			})
+		} else {
+			c.JSON(200, users)
+		}
+
 	})
 
 	r.GET("/users/:username", func(c *gin.Context) {
 		username := c.Param("username")
 
-		user := model.GetUserByUsername(username)
-		// TODO error response handling user not found
-		c.JSON(200, user)
+		user, err := model.GetUserByUsername(username)
+
+		if err != nil {
+			c.JSON(400, gin.H{
+				"message": err.Error(),
+			})
+		} else {
+			c.JSON(200, user)
+
+		}
+
 	})
 
 	r.POST("/users", func(c *gin.Context) {
 		var body model.User
 		c.BindJSON(&body)
 
-		r := model.InsertUser(body)
+		user, err := model.InsertUser(body)
 
-		if r {
-			c.JSON(200, gin.H{
-				"message": "ok",
+		if err != nil {
+			c.JSON(400, gin.H{
+				"message": err.Error(),
 			})
 		} else {
-			// TODO error response handling constraint
-			c.JSON(400, gin.H{
-				"message": "error insert",
-			})
+			c.JSON(201, user)
 		}
 	})
 
@@ -55,13 +67,37 @@ func MainRouter() *gin.Engine {
 		body.Id, _ = strconv.Atoi(c.Param("id"))
 
 		user, err := model.EditUser(body)
+
 		if err != nil {
-			panic(err)
+			c.JSON(400, gin.H{
+				"message": err.Error(),
+			})
+		} else {
+			c.JSON(200, user)
 		}
 
-		// TODO error response handling constraint
+	})
 
-		c.JSON(200, user)
+	r.DELETE("/users/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.JSON(400, gin.H{
+				"message": "inserted wrong id format",
+			})
+			return
+		}
+
+		if err = model.DeleteUser(id); err != nil {
+			c.JSON(400, gin.H{
+				"message": err.Error(),
+			})
+		} else {
+			c.JSON(200, gin.H{
+				"message": "OK",
+			})
+		}
+
 	})
 
 	return r

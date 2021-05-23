@@ -1,7 +1,7 @@
 package model
 
 import (
-	"log"
+	"errors"
 
 	"github.com/alfatio/login/config"
 	"github.com/alfatio/login/helper"
@@ -15,12 +15,6 @@ type User struct {
 }
 
 var db = config.DB()
-
-func panicOnErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
 
 func UserCol(colName string, user *User) interface{} {
 	switch colName {
@@ -37,15 +31,19 @@ func UserCol(colName string, user *User) interface{} {
 	}
 }
 
-func GetAllUsers() []User {
-	query := "SELECT * FROM users"
+func GetAllUsers() ([]User, error) {
+	query := "SELECT * FROM users ORDER BY user_id"
 	var output []User
 
 	rows, err := db.Query(query)
-	panicOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	colNames, err := rows.Columns()
-	panicOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	colNum := len(colNames)
 
@@ -63,26 +61,36 @@ func GetAllUsers() []User {
 
 		err := rows.Scan(cols...)
 
-		panicOnErr(err)
+		if err != nil {
+			return nil, err
+		}
 
 		output = append(output, u)
 	}
 
-	return output
+	if len(output) == 0 {
+		return output, errors.New("internal server error")
+	}
+
+	return output, nil
 
 }
 
-func GetUserByUsername(u string) User {
+func GetUserByUsername(u string) (User, error) {
 	var output User
 
 	query := `
 	SELECT * FROM users WHERE username = $1 LIMIT 1
 	`
 	rows, err := db.Query(query, u)
-	panicOnErr(err)
+	if err != nil {
+		return output, err
+	}
 
 	colNames, err := rows.Columns()
-	panicOnErr(err)
+	if err != nil {
+		return output, err
+	}
 
 	colNum := len(colNames)
 
@@ -97,20 +105,27 @@ func GetUserByUsername(u string) User {
 		}
 
 		err := rows.Scan(cols...)
-		panicOnErr(err)
+		if err != nil {
+			return output, err
+		}
 
 		output = u
 	}
 
-	return output
+	if output.Id == 0 {
+		return output, errors.New("no user with given username exist")
+	}
+
+	return output, nil
 
 }
 
-func InsertUser(p User) bool {
+func InsertUser(p User) (User, error) {
+	var output User
 	h, err := helper.HashPW(p.Password)
 
 	if err != nil {
-		return false
+		return output, err
 	}
 
 	p.Password = h
@@ -118,17 +133,54 @@ func InsertUser(p User) bool {
 	query := `
 	INSERT INTO users (username, password, email)
 		VALUES ($1, $2, $3)
+	RETURNING *
 	`
-	_, err = db.Query(query, p.Username, p.Password, p.Email)
+	rows, err := db.Query(query, p.Username, p.Password, p.Email)
 
-	log.Println(err)
+	if err != nil {
+		return output, err
+	}
 
-	return err == nil
+	defer rows.Close()
+
+	colNames, err := rows.Columns()
+	if err != nil {
+		return output, err
+	}
+
+	colNum := len(colNames)
+
+	for rows.Next() {
+		var u User
+
+		cols := make([]interface{}, colNum)
+
+		for i := 0; i < colNum; i++ {
+			cols[i] = UserCol(colNames[i], &u)
+		}
+
+		err := rows.Scan(cols...)
+		if err != nil {
+			return output, err
+		}
+
+		output = u
+	}
+
+	return output, nil
 }
 
 func EditUser(p User) (res User, err error) {
 
 	var output User
+	h, err := helper.HashPW(p.Password)
+
+	if err != nil {
+		return output, err
+	}
+
+	p.Password = h
+
 	query := `
 		UPDATE users
 		SET username = $1,
@@ -137,12 +189,17 @@ func EditUser(p User) (res User, err error) {
 		WHERE user_id = $4
     RETURNING *
 	`
-	log.Println(p)
 	rows, err := db.Query(query, p.Username, p.Password, p.Email, p.Id)
-	panicOnErr(err)
+	if err != nil {
+		return output, err
+	}
+
+	defer rows.Close()
 
 	colNames, err := rows.Columns()
-	panicOnErr(err)
+	if err != nil {
+		return output, err
+	}
 
 	colNum := len(colNames)
 
@@ -156,10 +213,39 @@ func EditUser(p User) (res User, err error) {
 
 		}
 
-		rows.Scan(cols...)
+		err := rows.Scan(cols...)
+
+		if err != nil {
+			return output, err
+		}
 
 		output = u
 	}
 
 	return output, nil
+}
+
+func DeleteUser(id int) error {
+
+	query := `
+		DELETE FROM users WHERE user_id = $1
+	`
+
+	res, err := db.Exec(query, id)
+
+	if err != nil {
+		return err
+	}
+
+	r, err := res.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if r == 0 {
+		return errors.New("no selected id exist")
+	}
+
+	return nil
 }
